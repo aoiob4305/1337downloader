@@ -6,7 +6,7 @@ import re
 import os
 from bs4 import BeautifulSoup
 
-TRANSMISSION = "/usr/bin/transmission-cli"
+TRANSMISSION = "/usr/bin/transmission-remote"
 HOST = ""
 USERNAME = ""
 PASSWORD = ""
