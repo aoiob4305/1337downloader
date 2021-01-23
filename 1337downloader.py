@@ -3,11 +3,10 @@
 
 import requests
 import re
-import os, time
+import os, sys, time
 from bs4 import BeautifulSoup
 from configparser import ConfigParser
 
-SETTING_FILENAME = "./setting.cfg"
 DEBUG = True
 
 #토렌트 링크를 얻어오는 함수 (업로더 조건 검색으로 할때)
@@ -116,41 +115,44 @@ if __name__ == '__main__':
     if DEBUG:
         print("program is in debug mode")
 
-    config = ConfigParser()
-    config.read(SETTING_FILENAME)
+    if len(sys.argv) == 2:
+        config = ConfigParser()
+        config.read(sys.argv[1])
 
-    #커넥션 에러일 경우 반복
-    result = False
-    while result is False:
-        if config['LINK'].getboolean('BYUPLOADER'):
-            result, links = getTorrentsLinksByUploader(config['LINK']['URL'])
-        else:
-            result, links = getTorrentsLinks(config['LINK']['URL'])
+        #커넥션 에러일 경우 반복
+        result = False
+        while result is False:
+            if config['LINK'].getboolean('BYUPLOADER'):
+                result, links = getTorrentsLinksByUploader(config['LINK']['URL'])
+            else:
+                result, links = getTorrentsLinks(config['LINK']['URL'])
 
-        if result is False:
-            print("getting links failed. wait 10 seconds...")
-            time.sleep(10)
+            if result is False:
+                print("getting links failed. wait 10 seconds...")
+                time.sleep(10)
 
-    if result:
-        if config['LINK'].getboolean('TODAY') == True:
-            temp = []
-            for link in links:
-                if link["date"][1] == True:
-                    temp.append(link)
-            links = temp
+        if result:
+            if config['LINK'].getboolean('TODAY') == True:
+                temp = []
+                for link in links:
+                    if link["date"][1] == True:
+                        temp.append(link)
+                links = temp
 
-        if DEBUG:
-            print("result is {}".format(result))
-            for idx, link in enumerate(links):
-                print("link {0} is {1}".format(idx, link))
+            if DEBUG:
+                print("result is {}".format(result))
+                for idx, link in enumerate(links):
+                    print("link {0} is {1}".format(idx, link))
 
-        if DEBUG is not True:
-            addTorrentsLinks(
-                links,
-                config['LINK']['URL_PREFIX'],
-                config['LINK'].getint('HOWMANY'),
-                config['HOST']['TRANSMISSION'],
-                config['HOST']['HOST'], 
-                config['HOST']['USERNAME'], 
-                PASSWORD = config['HOST']['PASSWORD'],
-            )
+            if DEBUG is not True:
+                addTorrentsLinks(
+                    links,
+                    config['LINK']['URL_PREFIX'],
+                    config['LINK'].getint('HOWMANY'),
+                    config['HOST']['TRANSMISSION'],
+                    config['HOST']['HOST'], 
+                    config['HOST']['USERNAME'], 
+                    PASSWORD = config['HOST']['PASSWORD'],
+                )
+    else:
+        print("usage: {0} setting_file".format(sys.argv[0]))
