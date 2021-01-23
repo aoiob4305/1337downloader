@@ -122,7 +122,11 @@ if __name__ == '__main__':
     #커넥션 에러일 경우 반복
     result = False
     while result is False:
-        result, links = getTorrentsLinks(config['LINK']['URL'])
+        if config['LINK'].getint('URL_PREFIX'):
+            result, links = getTorrentsLinksByUploader(config['LINK']['URL'])
+        else:
+            result, links = getTorrentsLinks(config['LINK']['URL'])
+
         if result is False:
             print("getting links failed. wait 10 seconds...")
             time.sleep(10)
