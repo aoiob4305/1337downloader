@@ -152,7 +152,7 @@ if __name__ == '__main__':
                     config['HOST']['TRANSMISSION'],
                     config['HOST']['HOST'], 
                     config['HOST']['USERNAME'], 
-                    PASSWORD = config['HOST']['PASSWORD'],
+                    config['HOST']['PASSWORD'],
                 )
     else:
         print("usage: {0} setting_file".format(sys.argv[0]))
