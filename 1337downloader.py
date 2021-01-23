@@ -3,66 +3,150 @@
 
 import requests
 import re
-import os
+import os, time
 from bs4 import BeautifulSoup
+from configparser import ConfigParser
 
-TRANSMISSION = "/usr/bin/transmission-remote"
-HOST = ""
-USERNAME = ""
-PASSWORD = ""
+SETTING_FILENAME = "./setting.cfg"
+DEBUG = True
 
-#링크 주소
-URL = ""
-URL_1337 = "https://1337x.to"
-HOWMANY = 2
-HOURS = True
-
-DEBUG = False
-
-#토렌트 링크를 얻어오는 함수
-def getTorrentsLinks(url):
+#토렌트 링크를 얻어오는 함수 (업로더 조건 검색으로 할때)
+def getTorrentsLinksByUploader(url):
     checkhours = lambda x: True if x == 'hours' else False #업로드 시간이 시간단위인지 일단위인지 체크하는 람다함수
 
-    with requests.get(URL) as page:
-        list_soup = BeautifulSoup(page.content, "html.parser")
+    with requests.get(url) as page:
+        if DEBUG:
+            print("requests status_code is {}".format(page.status_code))
+        
+        if page.status_code == 200:
+            list_soup = BeautifulSoup(page.content, "html.parser")
 
-        data_div = list_soup.find("div", {"class" : "table-list-wrap"})
-        data_tr= data_div.tbody.find_all("tr")
+            data_div = list_soup.find("div", {"class" : "table-list-wrap"})
+            data_tr= data_div.tbody.find_all("tr")
 
-        links = []
-        for tr in data_tr:
-            data_item = tr.find_all("a")
-            data_item_howold = tr.find("td", {"class" : "uploader"}).text.split(' ')  #업로드 시간 체크 목적
+            links = []
+            for tr in data_tr:
+                data_item = tr.find_all("a")
+                data_item_date = tr.find("td", {"class" : "uploader"}).text.split(' ')  #업로드 시간 체크 목적
             
-            links.append({
-                "name": data_item[1].string,
-                "link": data_item[1].get("href"),
-                "howold": (int(data_item_howold[0]), checkhours(data_item_howold[1])),
-            })
+                links.append({
+                    "name": data_item[1].string,
+                    "link": data_item[1].get("href"),
+                    "date": (int(data_item_date[0]), checkhours(data_item_date[1])),
+               })
 
-    return links
+            return True, links
+
+        else:
+            print("requests failed")
+
+            return False, ''
+
+#토렌트 링크를 얻어오는 함수 (일반검색조건)
+def getTorrentsLinks(url):
+    checkhours = lambda x: True if len(x) < 10 else False #업로드 시간이 시간단위인지 일단위인지 체크하는 람다함수(10은 시간 글자수)
+
+    with requests.get(url) as page:
+        if DEBUG:
+            print("requests status_code is {}".format(page.status_code))
+        
+        if page.status_code == 200:
+            list_soup = BeautifulSoup(page.content, "html.parser")
+
+            data_div = list_soup.find("div", {"class" : "table-list-wrap"})
+            data_tr= data_div.tbody.find_all("tr")
+
+            links = []
+            for tr in data_tr:
+                data_item = tr.find_all("a")
+                data_item_date = [tr.find("td", {"class" : "coll-date"}).text, False]  #업로드 시간 체크 목적
+                if checkhours(data_item_date[0]):
+                    data_item_date[1] = True
+            
+                links.append({
+                    "name": data_item[1].string,
+                    "link": data_item[1].get("href"),
+                    "date": data_item_date,
+               })
+
+            return True, links
+
+        else:
+            print("requests failed")
+
+            return False, ''
 
 #트랜스미션에 토렌트를 추가하는 함수
-def addTorrentsLinks(links, host, username, password):
-    for link in links:
-        with requests.get(URL_1337 + link["link"]) as link_page:
-            link_soup = BeautifulSoup(link_page.content, "html.parser")
-            link_magnet = link_soup.find("a", href=re.compile("magnet:+"))["href"]
+def addTorrentsLinks(links, postlink, howmany, transmission, host, username, password):
+    get = 0
+    fail = 0
 
-            if DEBUG == True:
-                command = '%s %s --auth %s:%s --add "%s"' % (TRANSMISSION, HOST, USERNAME, PASSWORD, link_magnet)
-                print(command)
-            else: 
-                os.system ('%s %s --auth %s:%s --add "%s"' % (TRANSMISSION, HOST, USERNAME, PASSWORD, link_magnet))
-            
+    if len(links) >= howmany:
+        links = links[0:howmany-1]
+
+    for link in links:
+        with requests.get(postlink + link["link"]) as link_page:
+            if DEBUG:
+                print("requests status_code is {}".format(link_page.status_code))
+
+            if link_page.status_code == 200:
+                link_soup = BeautifulSoup(link_page.content, "html.parser")
+                link_magnet = link_soup.find("a", href=re.compile("magnet:+"))["href"]
+
+                if DEBUG == True:
+                    command = '%s %s --auth %s:%s --add "%s"' % (transmission, host, username, password, link_magnet)
+                    print(command)
+                else: 
+                    os.system ('%s %s --auth %s:%s --add "%s"' % (transmission, host, username, password, link_magnet))
+
+                get += 1
+
+            else:
+                fail += 1
+                if DEBUG:
+                    print("requests failed")
+    
+    if DEBUG:
+        print("{} get, {} fail".format(get, fail))
+
+    return get, fail
+
 
 if __name__ == '__main__':
-    links = getTorrentsLinks(URL)
-    if HOURS == True:
-        temp = []
-        for link in links:
-            if link["howold"][1] == True:
-                temp.append(link)
-        links = temp
+    if DEBUG:
+        print("program is in debug mode")
 
-    addTorrentsLinks(links, HOST, USERNAME, PASSWORD)
+    config = ConfigParser()
+    config.read(SETTING_FILENAME)
+
+    #커넥션 에러일 경우 반복
+    result = False
+    while result is False:
+        result, links = getTorrentsLinks(config['LINK']['URL'])
+        if result is False:
+            print("getting links failed. wait 10 seconds...")
+            time.sleep(10)
+
+    if result:
+        if config['LINK'].getboolean('TODAY') == True:
+            temp = []
+            for link in links:
+                if link["date"][1] == True:
+                    temp.append(link)
+            links = temp
+
+        if DEBUG:
+            print("result is {}".format(result))
+            for idx, link in enumerate(links):
+                print("link {0} is {1}".format(idx, link))
+
+        if DEBUG is not True:
+            addTorrentsLinks(
+                links,
+                config['LINK']['URL_PREFIX'],
+                config['LINK'].getint('HOWMANY'),
+                config['HOST']['TRANSMISSION'],
+                config['HOST']['HOST'], 
+                config['HOST']['USERNAME'], 
+                PASSWORD = config['HOST']['PASSWORD'],
+            )
