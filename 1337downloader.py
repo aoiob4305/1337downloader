@@ -10,7 +10,7 @@ from configparser import ConfigParser
 DEBUG = True
 
 #토렌트 링크를 얻어오는 함수 (업로더 조건 검색으로 할때)
-def getTorrentsLinksByUploader(url, vip) 
+def getTorrentsLinksByUploader(url, vip): 
     checkhours = lambda x: True if x == 'hours' else False #업로드 시간이 시간단위인지 일단위인지 체크하는 람다함수
 
     with requests.get(url) as page:
