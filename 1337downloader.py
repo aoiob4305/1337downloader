@@ -10,7 +10,7 @@ from configparser import ConfigParser
 DEBUG = True
 
 #토렌트 링크를 얻어오는 함수 (업로더 조건 검색으로 할때)
-def getTorrentsLinksByUploader(url):
+def getTorrentsLinksByUploader(url, vip) 
     checkhours = lambda x: True if x == 'hours' else False #업로드 시간이 시간단위인지 일단위인지 체크하는 람다함수
 
     with requests.get(url) as page:
@@ -26,7 +26,10 @@ def getTorrentsLinksByUploader(url):
             links = []
             for tr in data_tr:
                 data_item = tr.find_all("a")
-                data_item_date = tr.find("td", {"class" : "uploader"}).text.split(' ')  #업로드 시간 체크 목적
+                if vip == ture:
+                    data_item_date = tr.find("td", {"class" : "vip"}).text.split(' ')  #업로드 시간 체크 목적
+                else:
+                    data_item_date = tr.find("td", {"class" : "uploader"}).text.split(' ')  #업로드 시간 체크 목적
             
                 links.append({
                     "name": data_item[1].string,
@@ -123,7 +126,7 @@ if __name__ == '__main__':
         result = False
         while result is False:
             if config['LINK'].getboolean('BYUPLOADER'):
-                result, links = getTorrentsLinksByUploader(config['LINK']['URL'])
+                result, links = getTorrentsLinksByUploader(config['LINK']['URL'], config['LINK'].getboolean('BYVIP'))
             else:
                 result, links = getTorrentsLinks(config['LINK']['URL'])
 
@@ -135,6 +138,7 @@ if __name__ == '__main__':
             if config['LINK'].getboolean('TODAY') == True:
                 temp = []
                 for link in links:
+                    if DEBUG: print(link)
                     if link["date"][1] == True:
                         temp.append(link)
                 links = temp
