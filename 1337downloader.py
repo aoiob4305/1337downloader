@@ -7,7 +7,7 @@ import os, sys, time
 from bs4 import BeautifulSoup
 from configparser import ConfigParser
 
-DEBUG = True
+DEBUG = False
 
 #토렌트 링크를 얻어오는 함수 (업로더 조건 검색으로 할때)
 def getTorrentsLinksByUploader(url, vip): 
@@ -26,7 +26,7 @@ def getTorrentsLinksByUploader(url, vip):
             links = []
             for tr in data_tr:
                 data_item = tr.find_all("a")
-                if vip == ture:
+                if vip == True:
                     data_item_date = tr.find("td", {"class" : "vip"}).text.split(' ')  #업로드 시간 체크 목적
                 else:
                     data_item_date = tr.find("td", {"class" : "uploader"}).text.split(' ')  #업로드 시간 체크 목적
