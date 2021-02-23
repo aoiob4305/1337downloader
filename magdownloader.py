@@ -27,7 +27,7 @@ with requests.get(URL) as page:
         elementors = soup.find_all("div", {"class":"elementor-row"})
 
         posts = elementors[0].find_all("div", {"class":"pgafu-post-grid-content"})
-        for post in posts[0:2]:
+        for post in posts:
             post_link = post.a['href']
             post_title = post.h2.text
             if DEBUG: 
@@ -41,4 +41,5 @@ with requests.get(URL) as page:
 
             down_soup = BeautifulSoup(requests.get(mag_link).content, "html.parser")
             down_link = down_soup.find("iframe")["src"]
-            download(down_link + "&dl=1", post_title + ".pdf")
+            if DEBUG == False:
+                download(down_link + "&dl=1", post_title + ".pdf")
