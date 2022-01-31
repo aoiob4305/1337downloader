@@ -7,7 +7,19 @@ import os, sys, time
 from bs4 import BeautifulSoup
 from configparser import ConfigParser
 
-DEBUG = False
+DEBUG = True
+
+def getTorrentsLinksByUploaderInMultipages(url, vip, pages):
+    links_in_multipages = []
+    result = False
+
+    for page in range(0, int(pages)):
+        url_with_page = url[:-2] + str(page + 1) + '/'
+        if DEBUG: print("get links in: " + url_with_page)
+        result, links = getTorrentsLinksByUploader(url_with_page, vip);
+        links_in_multipages += links
+    
+    return result, links_in_multipages
 
 #토렌트 링크를 얻어오는 함수 (업로더 조건 검색으로 할때)
 def getTorrentsLinksByUploader(url, vip): 
@@ -126,7 +138,17 @@ if __name__ == '__main__':
         result = False
         while result is False:
             if config['LINK'].getboolean('BYUPLOADER'):
-                result, links = getTorrentsLinksByUploader(config['LINK']['URL'], config['LINK'].getboolean('BYVIP'))
+                if config['LINK'].getboolean('MULTIPAGES'):
+                    result, links = getTorrentsLinksByUploaderInMultipages(
+                        config['LINK']['URL'], 
+                        config['LINK'].getboolean('BYVIP'),
+                        config['LINK']['PAGES']
+                    )
+                else:
+                    result, links = getTorrentsLinksByUploader(
+                        config['LINK']['URL'], 
+                        config['LINK'].getboolean('BYVIP')
+                    )
             else:
                 result, links = getTorrentsLinks(config['LINK']['URL'])
 
@@ -138,7 +160,9 @@ if __name__ == '__main__':
             if config['LINK'].getboolean('TODAY') == True:
                 temp = []
                 for link in links:
-                    if DEBUG: print(link)
+                    if DEBUG: 
+                        print(link)
+                        print(type(link['date'][1]))
                     if link["date"][1] == True:
                         temp.append(link)
                 links = temp
